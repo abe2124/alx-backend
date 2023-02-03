@@ -1,43 +1,45 @@
 #!/usr/bin/env python3
-
-'''
-Create a `get_locale` function with the `babel.localeselector decorator`.
-Use `request.accept_languages` to determine the best match with our
-supported languages.
-'''
-
-from flask import Flask
-from flask import g
-from flask import render_template
-from flask import request
+"""A Basic Flask app with internationalization support.
+"""
 from flask_babel import Babel
-from typing import Any
-
-
-app = Flask(__name__)
-babel = Babel(app)
+from flask import Flask, render_template, request
 
 
 class Config:
-    """docstring for Config"""
+    """Represents a Flask Babel configuration.
+    """
     LANGUAGES = ["en", "fr"]
-    BABEL_DEFAULT_LOCALE = 'en'
-    BABEL_DEFAULT_TIMEZONE = 'UTC'
+    BABEL_DEFAULT_LOCALE = "en"
+    BABEL_DEFAULT_TIMEZONE = "UTC"
+
+
+app = Flask(__name__)
+app.config.from_object(Config)
+app.url_map.strict_slashes = False
+babel = Babel(app)
 
 
 @babel.localeselector
-def get_locale():
-    # if a user is logged in, use the locale from the user settings
-    user = getattr(g, 'user', None)
-    if user is not None:
-        return user.locale
-    # otherwise try to guess the language from the user accept
-    # header the browser transmits.  We support de/fr/en in this
-    # example.  The best match wins.
-    return request.accept_languages.best_match(Config.LANGUAGES)
+def get_locale() -> str:
+    """Retrieves the locale for a web page.
+    """
+    queries = request.query_string.decode('utf-8').split('&')
+    query_table = dict(map(
+        lambda x: (x if '=' in x else '{}='.format(x)).split('='),
+        queries,
+    ))
+    if 'locale' in query_table:
+        if query_table['locale'] in app.config["LANGUAGES"]:
+            return query_table['locale']
+    return request.accept_languages.best_match(app.config["LANGUAGES"])
 
 
 @app.route('/')
-def home_page() -> Any:
-    '''Returns homepage'''
-    return render_template('2-index.html')
+def get_index() -> str:
+    """The home/index page.
+    """
+    return render_template('4-index.html')
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
